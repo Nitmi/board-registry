@@ -1,0 +1,33 @@
+{
+  "schema_version": "embedded-board-registry.observations.v1",
+  "observations": [
+    {
+      "id": "baud-list-com3",
+      "transport": "serial",
+      "identity": {
+        "port": "COM3",
+        "usb_vid": "303A",
+        "usb_pid": "1001",
+        "usb_serial": "E0:72:A1:D4:1F:DC"
+      },
+      "source": {
+        "path": "evidence/baud-list.json",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "point_in_time": true
+      }
+    },
+    {
+      "id": "debugger-probes-list",
+      "transport": "debug",
+      "identity": {
+        "probe_selector": "303a:1001:E0:72:A1:D4:1F:DC",
+        "target": "esp32s3"
+      },
+      "source": {
+        "path": "evidence/probes-list.json",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "point_in_time": true
+      }
+    }
+  ]
+}

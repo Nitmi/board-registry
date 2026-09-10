@@ -1,0 +1,52 @@
+{
+  "schema_version": "embedded-board-registry.registry.v1",
+  "boards": [
+    {
+      "id": "esp32s3-lab",
+      "label": "ESP32-S3 lab board",
+      "selectors": [
+        {
+          "id": "native-usb-serial",
+          "transport": "serial",
+          "identity": {
+            "usb_vid": "303A",
+            "usb_pid": "1001",
+            "usb_serial": "E0:72:A1:D4:1F:DC"
+          }
+        },
+        {
+          "id": "native-usb-jtag",
+          "transport": "debug",
+          "identity": {
+            "probe_selector": "303a:1001:E0:72:A1:D4:1F:DC",
+            "target": "esp32s3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "nrf52840-dk",
+      "label": "Nordic nRF52840 DK",
+      "selectors": [
+        {
+          "id": "onboard-jlink",
+          "transport": "debug",
+          "identity": {
+            "probe_selector": "1366:1061:001050275757",
+            "target": "nRF52840_xxAA"
+          }
+        },
+        {
+          "id": "jlink-uart",
+          "transport": "serial",
+          "identity": {
+            "usb_vid": "1366",
+            "usb_pid": "1061",
+            "usb_serial": "001050275757",
+            "pnp_interface": "MI_00"
+          }
+        }
+      ]
+    }
+  ]
+}

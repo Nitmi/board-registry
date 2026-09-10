@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "embedded-board-registry"
+version = "0.1.0"
+description = "Offline, fail-closed board identity resolution for embedded agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Nitmi" }]
+keywords = ["embedded", "hardware", "identity", "agent", "cli"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["jsonschema>=4.23", "pytest>=8.3", "ruff>=0.11"]
+
+[project.scripts]
+board-registry = "board_registry.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/board_registry"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "board_registry/schemas"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

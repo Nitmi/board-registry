@@ -16,7 +16,7 @@ ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 IDENTITY_FIELDS = {
     "serial": frozenset({"port", "usb_vid", "usb_pid", "usb_serial", "pnp_interface"}),
     "debug": frozenset({"probe_selector", "vendor_id", "product_id", "serial_number", "target"}),
-    "ble": frozenset({"address", "local_name", "service_uuid", "manufacturer_id"}),
+    "ble": frozenset({"identifier", "local_name", "service_uuid", "manufacturer_id"}),
 }
 
 
@@ -178,8 +178,8 @@ def validate_observations(data: object) -> dict[str, Any]:
     if data.get("schema_version") != OBSERVATIONS_SCHEMA:
         errors.append(f"schema_version must equal {OBSERVATIONS_SCHEMA}")
     observations = data.get("observations")
-    if not isinstance(observations, list) or not observations:
-        errors.append("observations must be a non-empty array")
+    if not isinstance(observations, list):
+        errors.append("observations must be an array")
         observations = []
     for index, observation in enumerate(observations):
         prefix = f"observations[{index}]"
@@ -224,6 +224,26 @@ def validate_observations(data: object) -> dict[str, Any]:
         "executables_started": False,
         "errors": errors,
     }
+
+
+def merge_observations(documents: list[dict[str, Any]]) -> dict[str, Any]:
+    if not documents:
+        raise RegistryError("at least one observations document is required")
+
+    observations: list[dict[str, Any]] = []
+    for index, document in enumerate(documents):
+        validation = validate_observations(document)
+        if not validation["ok"]:
+            raise RegistryError(
+                f"observations document {index + 1} is invalid: " + "; ".join(validation["errors"])
+            )
+        observations.extend(document["observations"])
+
+    result = {"schema_version": OBSERVATIONS_SCHEMA, "observations": observations}
+    validation = validate_observations(result)
+    if not validation["ok"]:
+        raise RegistryError("merged observations are invalid: " + "; ".join(validation["errors"]))
+    return result
 
 
 def _selector_matches(selector: dict[str, Any], observation: dict[str, Any]) -> bool:

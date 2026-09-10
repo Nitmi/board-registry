@@ -149,7 +149,7 @@
       "minProperties": 1,
       "additionalProperties": false,
       "properties": {
-        "address": {"type": "string", "minLength": 1},
+        "identifier": {"type": "string", "minLength": 1},
         "local_name": {"type": "string", "minLength": 1},
         "service_uuid": {"type": "string", "minLength": 1},
         "manufacturer_id": {"type": "string", "minLength": 1}

@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "ports": [
+    {
+      "device": "COM3",
+      "name": "COM3",
+      "description": "USB Serial Device",
+      "hardware_id": "USB VID:PID=303A:1001",
+      "vid": 12346,
+      "pid": 4097,
+      "serial_number": "E0:72:A1:D4:1F:DC",
+      "manufacturer": "Espressif",
+      "product": "USB JTAG/serial debug unit",
+      "interface": "MI_00",
+      "location": "1-1"
+    }
+  ]
+}

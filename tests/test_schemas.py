@@ -28,6 +28,17 @@ def test_observation_schema_tracks_runtime_version() -> None:
     assert schema["properties"]["schema_version"]["const"] == OBSERVATIONS_SCHEMA
 
 
+def test_observation_schema_accepts_empty_point_in_time_result() -> None:
+    schema = load("observations.schema.json")
+    registry_schema = load("registry.schema.json")
+    resources = Registry().with_resource(
+        registry_schema["$id"], Resource.from_contents(registry_schema)
+    )
+    Draft202012Validator(schema, registry=resources).validate(
+        {"schema_version": OBSERVATIONS_SCHEMA, "observations": []}
+    )
+
+
 def test_published_schemas_accept_bundled_examples() -> None:
     registry_schema = load("registry.schema.json")
     observations_schema = load("observations.schema.json")

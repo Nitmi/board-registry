@@ -1,0 +1,20 @@
+{
+  "ok": true,
+  "operation": "scan",
+  "filters": {},
+  "count": 1,
+  "devices": [
+    {
+      "identifier": "AA:BB:CC:DD:EE:FF",
+      "name": "Sensor",
+      "local_name": "Sensor-v1",
+      "rssi": -52,
+      "tx_power": null,
+      "service_uuids": ["0000180f-0000-1000-8000-00805f9b34fb"],
+      "manufacturer_data": {},
+      "service_data": {}
+    }
+  ],
+  "duration_ms": 1000,
+  "exit_code": 0
+}

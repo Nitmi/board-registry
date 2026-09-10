@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "ok": true,
+  "operation": "probes.list",
+  "operation_id": "example-probes-list",
+  "data": {
+    "backend": "probe-rs",
+    "probes": [
+      {
+        "id": "303a:1001:E0:72:A1:D4:1F:DC",
+        "vendor_id": 12346,
+        "product_id": 4097,
+        "serial": "E0:72:A1:D4:1F:DC",
+        "product": "EspJtag",
+        "interface": 0,
+        "probe_type": "EspJtag",
+        "accessible": true
+      }
+    ]
+  },
+  "warnings": [],
+  "artifacts": []
+}

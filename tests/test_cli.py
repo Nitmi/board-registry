@@ -58,3 +58,23 @@ def test_duplicate_json_field_returns_invalid_input(tmp_path, capsys) -> None:
     assert main(["validate", "registry", str(path), "--json"]) == 2
     output = json.loads(capsys.readouterr().out)
     assert output["status"] == "invalid_input"
+
+
+def test_cli_adapt_and_merge_saved_evidence(tmp_path, capsys) -> None:
+    baud_path = tmp_path / "baud.json"
+    write_json(baud_path, {"ok": True, "ports": []})
+
+    assert main(["adapt", "baud", str(baud_path)]) == 0
+    adapted = json.loads(capsys.readouterr().out)
+    assert adapted["observations"] == []
+
+    first_path = tmp_path / "first.json"
+    second_path = tmp_path / "second.json"
+    write_json(first_path, adapted)
+    write_json(second_path, adapted)
+    assert main(["merge", str(first_path), str(second_path)]) == 0
+    merged = json.loads(capsys.readouterr().out)
+    assert merged == {
+        "schema_version": "embedded-board-registry.observations.v1",
+        "observations": [],
+    }

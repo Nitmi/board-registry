@@ -7,10 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .adapters import adapt
 from .core import (
     TRANSPORTS,
     RegistryError,
     load_json,
+    merge_observations,
     resolve,
     sha256,
     validate_observations,
@@ -53,12 +55,29 @@ def parser() -> argparse.ArgumentParser:
         help="required transport; repeat for more than one",
     )
     match.add_argument("--json", action="store_true")
+
+    adapter = commands.add_parser("adapt", help="convert one saved component discovery result")
+    adapter.add_argument("source", choices=("baud", "embedded-debugger", "blea"))
+    adapter.add_argument("path", type=Path)
+    adapter.add_argument("--json", action="store_true")
+
+    merge = commands.add_parser("merge", help="merge validated observation documents")
+    merge.add_argument("paths", nargs="+", type=Path)
+    merge.add_argument("--json", action="store_true")
     return root
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == "adapt":
+            report = adapt(args.source, args.path)
+            _print(report, True)
+            return 0
+        if args.command == "merge":
+            report = merge_observations([load_json(path) for path in args.paths])
+            _print(report, True)
+            return 0
         if args.command == "validate":
             data = load_json(args.path)
             report = (

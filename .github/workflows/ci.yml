@@ -32,3 +32,4 @@ jobs:
       - run: uv run pytest
       - run: uv build
       - run: uv run board-registry --version
+      - run: uv run python -m board_registry --version

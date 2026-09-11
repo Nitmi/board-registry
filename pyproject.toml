@@ -13,8 +13,17 @@ authors = [{ name = "Nitmi" }]
 keywords = ["embedded", "hardware", "identity", "agent", "cli"]
 dependencies = []
 
+[project.urls]
+Homepage = "https://github.com/Nitmi/board-registry"
+Repository = "https://github.com/Nitmi/board-registry"
+Issues = "https://github.com/Nitmi/board-registry/issues"
+
 [project.optional-dependencies]
 dev = ["jsonschema>=4.23", "pytest>=8.3", "ruff>=0.11"]
+binary = [
+  "pyinstaller==6.22.2",
+  "tomli>=2.0; python_version < '3.11'",
+]
 
 [project.scripts]
 board-registry = "board_registry.cli:main"
@@ -28,6 +37,7 @@ packages = ["src/board_registry"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

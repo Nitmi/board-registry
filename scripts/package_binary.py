@@ -35,6 +35,7 @@ REVISION = re.compile(r"[0-9a-f]{40}")
 HASH = re.compile(r"[0-9a-f]{64}")
 BUILD_PYTHON = "3.13.13"
 BUILD_PYINSTALLER = "6.22.2"
+BUILD_PATH_POLICY = "python-root-system32-only"
 
 
 class ReleaseError(ValueError):
@@ -78,7 +79,32 @@ def builder_identity() -> dict[str, str]:
             f"CPython {BUILD_PYTHON} and PyInstaller {BUILD_PYINSTALLER}; "
             f"got CPython {python_version} and PyInstaller {pyinstaller_version}"
         )
-    return {"python": python_version, "pyinstaller": pyinstaller_version}
+    return {
+        "python": python_version,
+        "pyinstaller": pyinstaller_version,
+        "dependency_path": BUILD_PATH_POLICY,
+    }
+
+
+def build_environment() -> dict[str, str]:
+    system_root_value = os.environ.get("SYSTEMROOT") or os.environ.get("WINDIR")
+    if not system_root_value:
+        raise ReleaseError("Windows system root is unavailable")
+    python_root = Path(sys.base_prefix).resolve()
+    system_root = Path(system_root_value).resolve()
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "PATH": os.pathsep.join(
+                (str(python_root), str(python_root / "Scripts"), str(system_root / "System32"))
+            ),
+            "PYTHONHASHSEED": "1",
+            "SOURCE_DATE_EPOCH": "315532800",
+        }
+    )
+    environment.pop("PYTHONHOME", None)
+    environment.pop("PYTHONPATH", None)
+    return environment
 
 
 def git(root: Path, *args: str) -> str:
@@ -126,8 +152,16 @@ def archive_bytes(
     if not executable or len(executable) > MAX_BINARY:
         raise ReleaseError("standalone executable is empty or oversized")
     prefix = f"{PROJECT}-{version}-{TARGET}"
-    builder = builder or {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}
-    if builder != {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}:
+    builder = builder or {
+        "python": BUILD_PYTHON,
+        "pyinstaller": BUILD_PYINSTALLER,
+        "dependency_path": BUILD_PATH_POLICY,
+    }
+    if builder != {
+        "python": BUILD_PYTHON,
+        "pyinstaller": BUILD_PYINSTALLER,
+        "dependency_path": BUILD_PATH_POLICY,
+    }:
         raise ReleaseError("release builder identity differs")
     manifest = json_bytes(
         {
@@ -168,8 +202,7 @@ def build(root: Path, output_dir: Path, work_dir: Path) -> dict[str, object]:
         raise ReleaseError("build output or work directory already exists")
     output_dir.mkdir(parents=True)
     work_dir.mkdir(parents=True)
-    environment = dict(os.environ)
-    environment.update({"PYTHONHASHSEED": "1", "SOURCE_DATE_EPOCH": "315532800"})
+    environment = build_environment()
     result = subprocess.run(
         [
             sys.executable,
@@ -289,7 +322,12 @@ def verify(archive_path: Path, checksum_path: Path) -> dict[str, object]:
         or not VERSION.fullmatch(manifest["version"])
         or not isinstance(manifest["source_revision"], str)
         or not REVISION.fullmatch(manifest["source_revision"])
-        or manifest["builder"] != {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}
+        or manifest["builder"]
+        != {
+            "python": BUILD_PYTHON,
+            "pyinstaller": BUILD_PYINSTALLER,
+            "dependency_path": BUILD_PATH_POLICY,
+        }
         or not isinstance(manifest["executable_sha256"], str)
         or not HASH.fullmatch(manifest["executable_sha256"])
         or manifest["executable_sha256"] != digest(executable)

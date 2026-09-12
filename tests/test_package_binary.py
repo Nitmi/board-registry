@@ -41,7 +41,11 @@ def test_archive_verify_binds_executable_and_source(tmp_path: Path) -> None:
     report = package_binary.verify(archive, checksum)
     assert report["version"] == "0.1.0"
     assert report["source_revision"] == "a" * 40
-    assert report["builder"] == {"python": "3.13.13", "pyinstaller": "6.22.2"}
+    assert report["builder"] == {
+        "python": "3.13.13",
+        "pyinstaller": "6.22.2",
+        "dependency_path": "python-root-system32-only",
+    }
     assert report["executable_sha256"] == package_binary.digest(b"standalone")
     assert report["hardware_access"] is False
 
@@ -128,3 +132,30 @@ def test_builder_identity_rejects_unpinned_python() -> None:
         pytest.raises(package_binary.ReleaseError, match="release builder must use"),
     ):
         package_binary.builder_identity()
+
+
+def test_build_environment_excludes_ambient_dependency_paths(tmp_path: Path) -> None:
+    python_root = tmp_path / "python"
+    windows_root = tmp_path / "windows"
+    with (
+        mock.patch.object(package_binary.sys, "base_prefix", str(python_root)),
+        mock.patch.dict(
+            package_binary.os.environ,
+            {
+                "PATH": str(tmp_path / "unrelated-jdk"),
+                "SYSTEMROOT": str(windows_root),
+                "PYTHONHOME": "unsafe-home",
+                "PYTHONPATH": "unsafe-path",
+            },
+            clear=False,
+        ),
+    ):
+        environment = package_binary.build_environment()
+    assert environment["PATH"].split(package_binary.os.pathsep) == [
+        str(python_root.resolve()),
+        str((python_root / "Scripts").resolve()),
+        str((windows_root / "System32").resolve()),
+    ]
+    assert "unrelated-jdk" not in environment["PATH"]
+    assert "PYTHONHOME" not in environment
+    assert "PYTHONPATH" not in environment

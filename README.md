@@ -88,13 +88,17 @@ uv sync --locked --extra binary --extra dev
 uv run --extra binary python scripts\package_binary.py build `
   --output-dir build\release --work-dir build\pyinstaller --json
 uv run --extra binary python scripts\package_binary.py verify `
-  build\release\embedded-board-registry-0.2.2-windows-x86_64.zip `
-  --checksum build\release\embedded-board-registry-0.2.2-windows-x86_64.zip.sha256 `
+  build\release\embedded-board-registry-0.2.3-windows-x86_64.zip `
+  --checksum build\release\embedded-board-registry-0.2.3-windows-x86_64.zip.sha256 `
   --json
 ```
 
-Tag builds require exactly `v0.2.2`, uv `0.11.7`, uv-managed CPython `3.13.13`,
+Tag builds require exactly `v0.2.3`, uv `0.11.7`, uv-managed CPython `3.13.13`,
 and PyInstaller `6.22.2`. They build twice on a GitHub-hosted Windows runner,
 compare archives, run the offline resolution and selection examples, and attest
 the archive. The workflow does not create a GitHub Release or grant write access
 to repository contents.
+
+The packaging subprocess replaces ambient `PATH` with the selected Python root
+and Windows `System32`. This prevents unrelated SDKs and JDKs from injecting
+host-specific UCRT or API-set DLL copies into the standalone executable.

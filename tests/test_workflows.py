@@ -35,6 +35,7 @@ def test_release_workflow_is_tag_bound_and_narrow() -> None:
     assert "Independent archive hashes differ" in content
     assert "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6" in content
     assert "Offline resolution smoke check failed" in content
+    assert 'python-version: "3.13.13"' in content
     assert "Offline selection smoke check failed" in content
     assert "Offline selection contract assertion failed" in content
     assert "validate selection" in content

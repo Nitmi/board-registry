@@ -88,12 +88,12 @@ uv sync --locked --extra binary --extra dev
 uv run --extra binary python scripts\package_binary.py build `
   --output-dir build\release --work-dir build\pyinstaller --json
 uv run --extra binary python scripts\package_binary.py verify `
-  build\release\embedded-board-registry-0.2.0-windows-x86_64.zip `
-  --checksum build\release\embedded-board-registry-0.2.0-windows-x86_64.zip.sha256 `
+  build\release\embedded-board-registry-0.2.1-windows-x86_64.zip `
+  --checksum build\release\embedded-board-registry-0.2.1-windows-x86_64.zip.sha256 `
   --json
 ```
 
-Tag builds require exactly `v0.2.0`, build twice on a GitHub-hosted Windows
+Tag builds require exactly `v0.2.1`, build twice on a GitHub-hosted Windows
 runner, compare archives, run the offline resolution example, and attest the
 archive. The workflow does not create a GitHub Release or grant write access to
 repository contents.

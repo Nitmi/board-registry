@@ -14,5 +14,5 @@ def test_module_entry_reports_version() -> None:
         timeout=10,
     )
     assert completed.returncode == 0
-    assert completed.stdout.strip() == "board-registry 0.2.0"
+    assert completed.stdout.strip() == "board-registry 0.2.1"
     assert completed.stderr == ""

@@ -41,6 +41,7 @@ def test_archive_verify_binds_executable_and_source(tmp_path: Path) -> None:
     report = package_binary.verify(archive, checksum)
     assert report["version"] == "0.1.0"
     assert report["source_revision"] == "a" * 40
+    assert report["builder"] == {"python": "3.13.13", "pyinstaller": "6.22.2"}
     assert report["executable_sha256"] == package_binary.digest(b"standalone")
     assert report["hardware_access"] is False
 
@@ -118,3 +119,12 @@ def test_project_version_comes_from_pyproject(tmp_path: Path) -> None:
         '[project]\nname = "example"\nversion = "1.2.3"\n', encoding="utf-8"
     )
     assert package_binary.project_version(tmp_path) == "1.2.3"
+
+
+def test_builder_identity_rejects_unpinned_python() -> None:
+    with (
+        mock.patch.object(package_binary.platform, "python_version", return_value="3.13.12"),
+        mock.patch.object(package_binary.importlib.metadata, "version", return_value="6.22.2"),
+        pytest.raises(package_binary.ReleaseError, match="release builder must use"),
+    ):
+        package_binary.builder_identity()

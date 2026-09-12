@@ -11,6 +11,8 @@ permissions:
 jobs:
   windows-x86-64:
     runs-on: windows-latest
+    env:
+      UV_PYTHON_PREFERENCE: only-managed
     permissions:
       contents: read
       id-token: write
@@ -26,6 +28,7 @@ jobs:
           version: "0.11.7"
           python-version: "3.13.13"
           enable-cache: true
+      - run: uv python install 3.13.13
       - run: uv sync --locked --extra binary --extra dev
       - name: Bind tag, version, and commit
         shell: pwsh
@@ -64,7 +67,7 @@ jobs:
           $exe = @(Get-ChildItem -LiteralPath $extract -Filter 'board-registry.exe' -File -Recurse -ErrorAction Stop)
           if ($exe.Count -ne 1) { throw 'Expected one board-registry.exe' }
           $version = & $exe[0].FullName --version
-          if ($LASTEXITCODE -ne 0 -or $version -cne 'board-registry 0.2.1') { throw 'Standalone version check failed' }
+          if ($LASTEXITCODE -ne 0 -or $version -cne 'board-registry 0.2.2') { throw 'Standalone version check failed' }
           & $exe[0].FullName resolve examples/registry.json examples/observations.json --require serial --require debug --json
           if ($LASTEXITCODE -ne 0) { throw 'Offline resolution smoke check failed' }
           $selectionJson = & $exe[0].FullName select examples/registry.json examples/observations.json --require serial --require debug

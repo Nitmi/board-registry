@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.metadata
 import io
 import json
 import os
+import platform
 import re
 import stat
 import subprocess
@@ -31,6 +33,8 @@ MAX_CHECKSUM = 256
 VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
 REVISION = re.compile(r"[0-9a-f]{40}")
 HASH = re.compile(r"[0-9a-f]{64}")
+BUILD_PYTHON = "3.13.13"
+BUILD_PYINSTALLER = "6.22.2"
 
 
 class ReleaseError(ValueError):
@@ -60,6 +64,21 @@ def project_version(root: Path) -> str:
     if not isinstance(version, str) or not VERSION.fullmatch(version):
         raise ReleaseError("project version must be stable major.minor.patch")
     return version
+
+
+def builder_identity() -> dict[str, str]:
+    python_version = platform.python_version()
+    try:
+        pyinstaller_version = importlib.metadata.version("pyinstaller")
+    except importlib.metadata.PackageNotFoundError as error:
+        raise ReleaseError("PyInstaller is not installed in the build environment") from error
+    if python_version != BUILD_PYTHON or pyinstaller_version != BUILD_PYINSTALLER:
+        raise ReleaseError(
+            "release builder must use "
+            f"CPython {BUILD_PYTHON} and PyInstaller {BUILD_PYINSTALLER}; "
+            f"got CPython {python_version} and PyInstaller {pyinstaller_version}"
+        )
+    return {"python": python_version, "pyinstaller": pyinstaller_version}
 
 
 def git(root: Path, *args: str) -> str:
@@ -96,12 +115,20 @@ def check_tag(root: Path, tag: str) -> dict[str, str]:
     return {"version": version, "tag": tag, "source_revision": revision}
 
 
-def archive_bytes(version: str, revision: str, executable: bytes) -> bytes:
+def archive_bytes(
+    version: str,
+    revision: str,
+    executable: bytes,
+    builder: dict[str, str] | None = None,
+) -> bytes:
     if not VERSION.fullmatch(version) or not REVISION.fullmatch(revision):
         raise ReleaseError("invalid release identity")
     if not executable or len(executable) > MAX_BINARY:
         raise ReleaseError("standalone executable is empty or oversized")
     prefix = f"{PROJECT}-{version}-{TARGET}"
+    builder = builder or {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}
+    if builder != {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}:
+        raise ReleaseError("release builder identity differs")
     manifest = json_bytes(
         {
             "schema_version": SCHEMA,
@@ -110,6 +137,7 @@ def archive_bytes(version: str, revision: str, executable: bytes) -> bytes:
             "version": version,
             "target": TARGET,
             "source_revision": revision,
+            "builder": builder,
             "executable": f"{COMMAND}.exe",
             "executable_sha256": digest(executable),
             "executable_size": len(executable),
@@ -133,6 +161,7 @@ def archive_bytes(version: str, revision: str, executable: bytes) -> bytes:
 
 
 def build(root: Path, output_dir: Path, work_dir: Path) -> dict[str, object]:
+    builder = builder_identity()
     revision = clean_revision(root)
     version = project_version(root)
     if output_dir.exists() or work_dir.exists():
@@ -175,7 +204,7 @@ def build(root: Path, output_dir: Path, work_dir: Path) -> dict[str, object]:
     if executable_path.is_symlink() or not executable_path.is_file():
         raise ReleaseError(f"PyInstaller did not create {COMMAND}.exe")
     executable = executable_path.read_bytes()
-    payload = archive_bytes(version, revision, executable)
+    payload = archive_bytes(version, revision, executable, builder)
     archive = output_dir / f"{PROJECT}-{version}-{TARGET}.zip"
     checksum = archive.with_suffix(".zip.sha256")
     archive.write_bytes(payload)
@@ -188,6 +217,7 @@ def build(root: Path, output_dir: Path, work_dir: Path) -> dict[str, object]:
         "version": version,
         "target": TARGET,
         "source_revision": revision,
+        "builder": builder,
         "hardware_access": False,
     }
 
@@ -239,6 +269,7 @@ def verify(archive_path: Path, checksum_path: Path) -> dict[str, object]:
         "version",
         "target",
         "source_revision",
+        "builder",
         "executable",
         "executable_sha256",
         "executable_size",
@@ -258,6 +289,7 @@ def verify(archive_path: Path, checksum_path: Path) -> dict[str, object]:
         or not VERSION.fullmatch(manifest["version"])
         or not isinstance(manifest["source_revision"], str)
         or not REVISION.fullmatch(manifest["source_revision"])
+        or manifest["builder"] != {"python": BUILD_PYTHON, "pyinstaller": BUILD_PYINSTALLER}
         or not isinstance(manifest["executable_sha256"], str)
         or not HASH.fullmatch(manifest["executable_sha256"])
         or manifest["executable_sha256"] != digest(executable)

@@ -64,9 +64,25 @@ jobs:
           $exe = @(Get-ChildItem -LiteralPath $extract -Filter 'board-registry.exe' -File -Recurse -ErrorAction Stop)
           if ($exe.Count -ne 1) { throw 'Expected one board-registry.exe' }
           $version = & $exe[0].FullName --version
-          if ($LASTEXITCODE -ne 0 -or $version -cne 'board-registry 0.1.0') { throw 'Standalone version check failed' }
+          if ($LASTEXITCODE -ne 0 -or $version -cne 'board-registry 0.2.0') { throw 'Standalone version check failed' }
           & $exe[0].FullName resolve examples/registry.json examples/observations.json --require serial --require debug --json
           if ($LASTEXITCODE -ne 0) { throw 'Offline resolution smoke check failed' }
+          $selectionJson = & $exe[0].FullName select examples/registry.json examples/observations.json --require serial --require debug
+          if ($LASTEXITCODE -ne 0) { throw 'Offline selection smoke check failed' }
+          $selection = $selectionJson | ConvertFrom-Json
+          if (
+            $selection.schema_version -cne 'embedded-board-registry.selection.v1' -or
+            $selection.ok -ne $true -or
+            $selection.status -cne 'selected' -or
+            $selection.authorization.granted -ne $false -or
+            @($selection.authorization.allowed_operations).Count -ne 0 -or
+            $selection.hardware_access -ne $false -or
+            $selection.executables_started -ne $false
+          ) { throw 'Offline selection contract assertion failed' }
+          $selectionPath = Join-Path $env:RUNNER_TEMP 'board-selection.json'
+          $selectionJson | Set-Content -LiteralPath $selectionPath -Encoding utf8
+          & $exe[0].FullName validate selection $selectionPath --json
+          if ($LASTEXITCODE -ne 0) { throw 'Offline selection validation failed' }
       - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: ${{ env.archive }}

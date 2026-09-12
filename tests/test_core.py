@@ -226,9 +226,7 @@ def test_selection_rejects_identity_not_bound_to_observation(
     assert any("does not match observed_identity" in error for error in report["errors"])
 
 
-def test_selection_requires_non_authorizing_contract(
-    registry: dict, observations: dict
-) -> None:
+def test_selection_requires_non_authorizing_contract(registry: dict, observations: dict) -> None:
     resolution = resolve(registry, observations, {"serial"})
     selection = create_selection(
         registry,

@@ -64,9 +64,7 @@ def test_published_schemas_accept_bundled_examples() -> None:
 
 def test_selection_schema_accepts_runtime_output() -> None:
     registry = json.loads((ROOT / "examples" / "registry.json").read_text(encoding="utf-8"))
-    observations = json.loads(
-        (ROOT / "examples" / "observations.json").read_text(encoding="utf-8")
-    )
+    observations = json.loads((ROOT / "examples" / "observations.json").read_text(encoding="utf-8"))
     resolution = resolve(registry, observations, {"serial", "debug"})
     selection = create_selection(
         registry,

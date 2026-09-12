@@ -314,8 +314,12 @@ def validate_selection(data: object) -> dict[str, Any]:
         observed_identity = _identity(
             binding.get("observed_identity"), transport, f"{prefix}.observed_identity", errors
         )
-        if selector_identity and observed_identity and not all(
-            observed_identity.get(key) == value for key, value in selector_identity.items()
+        if (
+            selector_identity
+            and observed_identity
+            and not all(
+                observed_identity.get(key) == value for key, value in selector_identity.items()
+            )
         ):
             errors.append(f"{prefix}.selector_identity does not match observed_identity")
         source = binding.get("source")
@@ -494,9 +498,7 @@ def create_selection(
         match = evaluation["matched"][transport][0]
         selector = next(item for item in board["selectors"] if item["id"] == match["selector_id"])
         observation = next(
-            item
-            for item in observations["observations"]
-            if item["id"] == match["observation_id"]
+            item for item in observations["observations"] if item["id"] == match["observation_id"]
         )
         bindings.append(
             {

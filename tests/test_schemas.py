@@ -6,7 +6,14 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
-from board_registry.core import IDENTITY_FIELDS, OBSERVATIONS_SCHEMA, REGISTRY_SCHEMA
+from board_registry.core import (
+    IDENTITY_FIELDS,
+    OBSERVATIONS_SCHEMA,
+    REGISTRY_SCHEMA,
+    SELECTION_SCHEMA,
+    create_selection,
+    resolve,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,3 +60,28 @@ def test_published_schemas_accept_bundled_examples() -> None:
     Draft202012Validator(observations_schema, registry=resources).validate(
         json.loads((ROOT / "examples" / "observations.json").read_text(encoding="utf-8"))
     )
+
+
+def test_selection_schema_accepts_runtime_output() -> None:
+    registry = json.loads((ROOT / "examples" / "registry.json").read_text(encoding="utf-8"))
+    observations = json.loads(
+        (ROOT / "examples" / "observations.json").read_text(encoding="utf-8")
+    )
+    resolution = resolve(registry, observations, {"serial", "debug"})
+    selection = create_selection(
+        registry,
+        observations,
+        resolution,
+        {
+            "registry": {"path": "registry.json", "sha256": "a" * 64},
+            "observations": {"path": "observations.json", "sha256": "b" * 64},
+        },
+    )
+    schema = load("selection.schema.json")
+    registry_schema = load("registry.schema.json")
+    resources = Registry().with_resource(
+        registry_schema["$id"], Resource.from_contents(registry_schema)
+    )
+    assert schema["properties"]["schema_version"]["const"] == SELECTION_SCHEMA
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema, registry=resources).validate(selection)

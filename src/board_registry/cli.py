@@ -11,12 +11,14 @@ from .adapters import adapt
 from .core import (
     TRANSPORTS,
     RegistryError,
+    create_selection,
     load_json,
     merge_observations,
     resolve,
     sha256,
     validate_observations,
     validate_registry,
+    validate_selection,
 )
 
 
@@ -40,7 +42,7 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
 
     validate = commands.add_parser("validate", help="validate one registry or observation file")
-    validate.add_argument("kind", choices=("registry", "observations"))
+    validate.add_argument("kind", choices=("registry", "observations", "selection"))
     validate.add_argument("path", type=Path)
     validate.add_argument("--json", action="store_true")
 
@@ -55,6 +57,20 @@ def parser() -> argparse.ArgumentParser:
         help="required transport; repeat for more than one",
     )
     match.add_argument("--json", action="store_true")
+
+    select = commands.add_parser(
+        "select", help="emit a non-authorizing transport selection for one resolved board"
+    )
+    select.add_argument("registry", type=Path)
+    select.add_argument("observations", type=Path)
+    select.add_argument(
+        "--require",
+        action="append",
+        choices=sorted(TRANSPORTS),
+        default=[],
+        help="required transport; repeat for more than one",
+    )
+    select.add_argument("--json", action="store_true")
 
     adapter = commands.add_parser("adapt", help="convert one saved component discovery result")
     adapter.add_argument("source", choices=("baud", "embedded-debugger", "blea"))
@@ -80,9 +96,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "validate":
             data = load_json(args.path)
-            report = (
-                validate_registry(data) if args.kind == "registry" else validate_observations(data)
-            )
+            validators = {
+                "registry": validate_registry,
+                "observations": validate_observations,
+                "selection": validate_selection,
+            }
+            report = validators[args.kind](data)
             report["path"] = str(args.path.resolve())
             report["sha256"] = sha256(args.path)
             _print(report, args.json)
@@ -91,6 +110,20 @@ def main(argv: list[str] | None = None) -> int:
         registry = load_json(args.registry)
         observations = load_json(args.observations)
         report = resolve(registry, observations, set(args.require))
+        inputs = {
+            "registry": {
+                "path": str(args.registry.resolve()),
+                "sha256": sha256(args.registry),
+            },
+            "observations": {
+                "path": str(args.observations.resolve()),
+                "sha256": sha256(args.observations),
+            },
+        }
+        if args.command == "select" and report["status"] == "resolved":
+            report = create_selection(registry, observations, report, inputs)
+            _print(report, True)
+            return 0
         report["registry"] = {
             "path": str(args.registry.resolve()),
             "sha256": sha256(args.registry),
@@ -99,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
             "path": str(args.observations.resolve()),
             "sha256": sha256(args.observations),
         }
-        _print(report, args.json)
+        _print(report, args.json or args.command == "select")
         return {"resolved": 0, "no_match": 3, "ambiguous": 4}[report["status"]]
     except RegistryError as error:
         report = {
@@ -110,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
             "executables_started": False,
             "errors": [str(error)],
         }
-        _print(report, getattr(args, "json", False))
+        _print(report, getattr(args, "json", False) or args.command == "select")
         return 2
 
 

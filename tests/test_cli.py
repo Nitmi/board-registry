@@ -78,3 +78,99 @@ def test_cli_adapt_and_merge_saved_evidence(tmp_path, capsys) -> None:
         "schema_version": "embedded-board-registry.observations.v1",
         "observations": [],
     }
+
+
+def test_cli_select_emits_hash_bound_non_authorizing_contract(tmp_path, capsys) -> None:
+    registry = {
+        "schema_version": "embedded-board-registry.registry.v1",
+        "boards": [
+            {
+                "id": "dk",
+                "label": "DK",
+                "selectors": [
+                    {
+                        "id": "jlink",
+                        "transport": "debug",
+                        "identity": {"probe_selector": "1366:1061:001050275757"},
+                    }
+                ],
+            }
+        ],
+    }
+    observations = {
+        "schema_version": "embedded-board-registry.observations.v1",
+        "observations": [
+            {
+                "id": "probe",
+                "transport": "debug",
+                "identity": {
+                    "probe_selector": "1366:1061:001050275757",
+                    "vendor_id": "1366",
+                    "product_id": "1061",
+                },
+                "source": {"path": "probe.json", "sha256": "b" * 64, "point_in_time": True},
+            }
+        ],
+    }
+    registry_path = tmp_path / "registry.json"
+    observations_path = tmp_path / "observations.json"
+    write_json(registry_path, registry)
+    write_json(observations_path, observations)
+
+    assert main(["select", str(registry_path), str(observations_path), "--require", "debug"]) == 0
+    selection = json.loads(capsys.readouterr().out)
+    assert selection["schema_version"] == "embedded-board-registry.selection.v1"
+    assert selection["board_id"] == "dk"
+    assert selection["bindings"][0]["observed_identity"]["vendor_id"] == "1366"
+    assert selection["authorization"] == {"granted": False, "allowed_operations": []}
+    assert selection["inputs"]["registry"]["sha256"]
+
+    selection_path = tmp_path / "selection.json"
+    write_json(selection_path, selection)
+    assert main(["validate", "selection", str(selection_path), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+def test_cli_select_preserves_no_match_exit_code(tmp_path, capsys) -> None:
+    registry = {
+        "schema_version": "embedded-board-registry.registry.v1",
+        "boards": [
+            {
+                "id": "dk",
+                "label": "DK",
+                "selectors": [
+                    {
+                        "id": "jlink",
+                        "transport": "debug",
+                        "identity": {"probe_selector": "expected"},
+                    }
+                ],
+            }
+        ],
+    }
+    observations = {
+        "schema_version": "embedded-board-registry.observations.v1",
+        "observations": [
+            {
+                "id": "probe",
+                "transport": "debug",
+                "identity": {"probe_selector": "other"},
+                "source": {"path": "probe.json", "sha256": "b" * 64, "point_in_time": True},
+            }
+        ],
+    }
+    registry_path = tmp_path / "registry.json"
+    observations_path = tmp_path / "observations.json"
+    write_json(registry_path, registry)
+    write_json(observations_path, observations)
+    assert main(["select", str(registry_path), str(observations_path)]) == 3
+    assert json.loads(capsys.readouterr().out)["status"] == "no_match"
+
+
+def test_cli_select_reports_invalid_input_as_json(tmp_path, capsys) -> None:
+    registry_path = tmp_path / "registry.json"
+    observations_path = tmp_path / "observations.json"
+    registry_path.write_text("{}", encoding="utf-8")
+    observations_path.write_text("{}", encoding="utf-8")
+    assert main(["select", str(registry_path), str(observations_path)]) == 2
+    assert json.loads(capsys.readouterr().out)["status"] == "invalid_input"

@@ -4,7 +4,14 @@ import copy
 
 import pytest
 
-from board_registry.core import RegistryError, resolve, validate_observations, validate_registry
+from board_registry.core import (
+    RegistryError,
+    create_selection,
+    resolve,
+    validate_observations,
+    validate_registry,
+    validate_selection,
+)
 
 
 @pytest.fixture
@@ -176,3 +183,64 @@ def test_observations_reject_unknown_source_field(observations: dict) -> None:
     report = validate_observations(observations)
     assert report["ok"] is False
     assert any("captured_at is not allowed" in error for error in report["errors"])
+
+
+def test_selection_binds_exact_resolved_transport_evidence(
+    registry: dict, observations: dict
+) -> None:
+    resolution = resolve(registry, observations, {"serial", "debug"})
+    selection = create_selection(
+        registry,
+        observations,
+        resolution,
+        {
+            "registry": {"path": "registry.json", "sha256": "b" * 64},
+            "observations": {"path": "observations.json", "sha256": "c" * 64},
+        },
+    )
+    assert selection["status"] == "selected"
+    assert selection["board_id"] == "esp32s3-lab"
+    assert selection["authorization"] == {"granted": False, "allowed_operations": []}
+    assert selection["hardware_access"] is False
+    assert [item["transport"] for item in selection["bindings"]] == ["debug", "serial"]
+    assert selection["bindings"][0]["observed_identity"]["target"] == "esp32s3"
+    assert validate_selection(selection)["ok"] is True
+
+
+def test_selection_rejects_identity_not_bound_to_observation(
+    registry: dict, observations: dict
+) -> None:
+    resolution = resolve(registry, observations, {"serial"})
+    selection = create_selection(
+        registry,
+        observations,
+        resolution,
+        {
+            "registry": {"path": "registry.json", "sha256": "b" * 64},
+            "observations": {"path": "observations.json", "sha256": "c" * 64},
+        },
+    )
+    selection["bindings"][0]["selector_identity"]["usb_serial"] = "other"
+    report = validate_selection(selection)
+    assert report["ok"] is False
+    assert any("does not match observed_identity" in error for error in report["errors"])
+
+
+def test_selection_requires_non_authorizing_contract(
+    registry: dict, observations: dict
+) -> None:
+    resolution = resolve(registry, observations, {"serial"})
+    selection = create_selection(
+        registry,
+        observations,
+        resolution,
+        {
+            "registry": {"path": "registry.json", "sha256": "b" * 64},
+            "observations": {"path": "observations.json", "sha256": "c" * 64},
+        },
+    )
+    selection["authorization"] = {"granted": True, "allowed_operations": ["flash"]}
+    report = validate_selection(selection)
+    assert report["ok"] is False
+    assert any("granted must equal false" in error for error in report["errors"])
+    assert any("allowed_operations must be empty" in error for error in report["errors"])

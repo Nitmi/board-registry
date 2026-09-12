@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Nitmi/board-registry/schemas/selection.schema.json",
+  "title": "Embedded Board Transport Selection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ok",
+    "status",
+    "board_id",
+    "required_transports",
+    "bindings",
+    "inputs",
+    "authorization",
+    "hardware_access",
+    "executables_started"
+  ],
+  "properties": {
+    "schema_version": {"const": "embedded-board-registry.selection.v1"},
+    "ok": {"const": true},
+    "status": {"const": "selected"},
+    "board_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "required_transports": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["ble", "debug", "serial"]}
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/binding"}
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry", "observations"],
+      "properties": {
+        "registry": {"$ref": "#/$defs/input"},
+        "observations": {"$ref": "#/$defs/input"}
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["granted", "allowed_operations"],
+      "properties": {
+        "granted": {"const": false},
+        "allowed_operations": {"type": "array", "maxItems": 0}
+      }
+    },
+    "hardware_access": {"const": false},
+    "executables_started": {"const": false}
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "point_in_time"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "point_in_time": {"const": true}
+      }
+    },
+    "binding": {
+      "oneOf": [
+        {"$ref": "#/$defs/serialBinding"},
+        {"$ref": "#/$defs/debugBinding"},
+        {"$ref": "#/$defs/bleBinding"}
+      ]
+    },
+    "bindingBase": {
+      "type": "object",
+      "required": [
+        "transport",
+        "selector_id",
+        "observation_id",
+        "selector_identity",
+        "observed_identity",
+        "source"
+      ],
+      "properties": {
+        "selector_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "observation_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+        "source": {"$ref": "#/$defs/source"}
+      }
+    },
+    "serialBinding": {
+      "allOf": [
+        {"$ref": "#/$defs/bindingBase"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "transport": {"const": "serial"},
+            "selector_id": true,
+            "observation_id": true,
+            "selector_identity": {"$ref": "registry.schema.json#/$defs/serialIdentity"},
+            "observed_identity": {"$ref": "registry.schema.json#/$defs/serialIdentity"},
+            "source": true
+          }
+        }
+      ]
+    },
+    "debugBinding": {
+      "allOf": [
+        {"$ref": "#/$defs/bindingBase"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "transport": {"const": "debug"},
+            "selector_id": true,
+            "observation_id": true,
+            "selector_identity": {"$ref": "registry.schema.json#/$defs/debugIdentity"},
+            "observed_identity": {"$ref": "registry.schema.json#/$defs/debugIdentity"},
+            "source": true
+          }
+        }
+      ]
+    },
+    "bleBinding": {
+      "allOf": [
+        {"$ref": "#/$defs/bindingBase"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "transport": {"const": "ble"},
+            "selector_id": true,
+            "observation_id": true,
+            "selector_identity": {"$ref": "registry.schema.json#/$defs/bleIdentity"},
+            "observed_identity": {"$ref": "registry.schema.json#/$defs/bleIdentity"},
+            "source": true
+          }
+        }
+      ]
+    }
+  }
+}

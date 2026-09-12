@@ -23,6 +23,27 @@ board-registry resolve registry.json evidence\combined.observations.json `
   --require serial --require debug --json
 ```
 
+After a unique resolution, emit a hash-bound transport selection for the next
+workflow stage:
+
+```powershell
+board-registry select registry.json evidence\combined.observations.json `
+  --require serial --require debug > evidence\board-selection.json
+board-registry validate selection evidence\board-selection.json --json
+```
+
+The `embedded-board-registry.selection.v1` document carries the exact matched
+selector, full observed transport identity, source evidence hash, and hashes of
+the registry and observations inputs. It always contains
+`authorization.granted=false` and an empty `allowed_operations` list. Consumers
+may translate its observed serial port, probe selector, or BLE identifier into
+their own native identity guards, but the document does not authorize opening,
+connecting, attaching, resetting, flashing, or writing.
+
+Probe discovery does not establish a target. Declare the target and firmware
+hash separately in the hardware-test contract, then let `embedded-debugger`
+perform its own target checks before any target operation.
+
 Adapters are bound to the current native JSON contracts and reject unknown
 fields. Every observation records the absolute source path and SHA-256. Probe
 discovery does not prove a target identity, so the debugger adapter never adds a
@@ -51,7 +72,7 @@ volatile fields such as a COM port, but every field it does declare must be
 present and equal in the observation. Sources must record a lowercase SHA-256
 and whether the evidence is point-in-time.
 
-Machine-readable input contracts are published in `schemas/`. The runtime uses
+Machine-readable input and selection contracts are published in `schemas/`. The runtime uses
 the Python standard library only; JSON Schema is provided for editors, generators,
 and independent validation rather than as a runtime dependency.
 
